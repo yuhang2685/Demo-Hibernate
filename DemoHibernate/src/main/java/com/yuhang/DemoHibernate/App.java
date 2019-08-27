@@ -1,7 +1,11 @@
 package com.yuhang.DemoHibernate;
 
-import javax.persistence.OneToOne;
+import java.util.List;
+import java.util.Map;
 
+import org.hibernate.Criteria;
+import org.hibernate.Query;
+import org.hibernate.SQLQuery;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -36,7 +40,7 @@ public class App
 {
     public static void main( String[] args )
     {
-    	exampleManyToMany();
+    	exampleHQLSQL();
     	
     }
     
@@ -339,6 +343,109 @@ public class App
     
     }
 
+    /**
+     * @author yuhang
+     * 
+     * In this example, we explore how to use Hibernate Query Language (HQL) for complicated ORM manipulations.
+     * 
+     */
+     
+    public static void exampleHQL() {    
+	
+    	Configuration con = new Configuration().configure().addAnnotatedClass(Alien.class);
 
+    	ServiceRegistry reg = new StandardServiceRegistryBuilder().applySettings(con.getProperties()).build();
+    	
+    	SessionFactory sf = con.buildSessionFactory(reg);    	
+    	
+    	Session session = sf.openSession();
+    			
+    	Transaction tx = session.beginTransaction();
+    	
+    	/* Save dummy data:
+    	Random rd = new Random();    	
+    	for (int i = 1; i <= 50; i++) 
+    	{
+    		Alien a = new Alien();
+    		a.setAid(i);
+    		a.setAname("name" + i);
+    		a.setPoints(rd.nextInt(100));
+    		session.save(a);		
+    	}
+    	*/
+    	
+    	// HQL query, note capital A for class.
+    	Query q1 = session.createQuery("from Alien where points > 50");
+    	List<Alien> aliens = q1.list();		
+    	for (Alien a: aliens) {System.out.println(a);}
+    	
+    	// HQL query, for single result.
+    	Query q2 = session.createQuery("from Alien where aid = 7");
+    	Alien a = (Alien) q2.uniqueResult();
+    	System.out.println(a);
+    	
+    	// HQL query, fetching specific columns (as objects array) instead of the entire record.
+    	Query q3 = session.createQuery("select aid, aname, points from Alien where aid = 7");
+    	Object[] s = (Object[]) q3.uniqueResult();
+    	for (Object o: s) {System.out.println(o);}
+    	
+    	// HQL query, fetching specific columns of all records.
+    	Query q4 = session.createQuery("select aid, aname, points from Alien");
+    	List<Object[]> g = (List<Object[]>) q4.list();
+    	for (Object[] t : g) {System.out.println(t[0] + ":" + t[1] + ":" + t[2]);}
+    	
+    	// HQL query, fetching the sum of specific column of specific records using "align"
+    	Query q5 = session.createQuery("select sum(points) from Alien a where a.points>50");
+    	Long y = (Long) q5.uniqueResult();
+    	System.out.println(y);
+    	
+    	// HQL query, using variable.
+    	int p = 60;
+    	Query q6 = session.createQuery("select sum(points) from Alien a where a.points> :p");
+    	q6.setParameter("p", p);
+    	Long z = (Long) q6.uniqueResult();
+    	System.out.println(z);
+    	
+    	tx.commit(); 	
+    }
+   
+    /**
+     * @author yuhang
+     * 
+     * In this example, we explore how to embed SQL into Hibernate Query Language (HQL).
+     * 
+     */
+     
+    public static void exampleHQLSQL() {    
+	
+    	Configuration con = new Configuration().configure().addAnnotatedClass(Alien.class);
+
+    	ServiceRegistry reg = new StandardServiceRegistryBuilder().applySettings(con.getProperties()).build();
+    	
+    	SessionFactory sf = con.buildSessionFactory(reg);    	
+    	
+    	Session session = sf.openSession();
+    			
+    	Transaction tx = session.beginTransaction();
+
+    	// Also called "Native Queries..."
+    	SQLQuery q1 = session.createSQLQuery("select * from alien where points > 60");
+    	q1.addEntity(Alien.class);
+    	List<Alien> aliens = q1.list();    	
+    	for (Alien a : aliens) {System.out.println(a);}
+    	
+    	SQLQuery q2 = session.createSQLQuery("select aname,points from alien where points > 60");
+    	// Convert output into map format
+    	q2.setResultTransformer(Criteria.ALIAS_TO_ENTITY_MAP);
+    	List s = q2.list();    	
+    	for (Object o : s) 
+    	{
+    		Map m = (Map)o;
+    		System.out.println(m.get("aname") + ":" + m.get("points"));
+    	}
+    	
+    	tx.commit(); 	
+    }
+   
 
 }
